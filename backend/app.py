@@ -4,6 +4,7 @@ import requests
 import pandas as pd
 import duckdb
 import os
+import datamart_profiler
 
 app = Flask(__name__)
 
@@ -14,9 +15,20 @@ def download_and_save(id):
     if response.status_code==200:
         data=response.content.decode()
         list=[x.split(',') for x in data.split('\n')]
-
         df=pd.DataFrame(list[1:],columns=list[0])
+
+        profiles=datamart_profiler.process_dataset(df)
+        for c in profiles['columns']:
+            # print(c['name'],c['structural_type'])
+            if "Integer" in c['structural_type']:
+                df[c['name']]=df[c['name']].fillna(0).astype(float).astype(int)
+            elif "Float" in c['structural_type']:
+                df[c['name']]=df[c['name']].fillna(0).astype(float)
+            elif "Text" in c['structural_type']:
+                df[c['name']]=df[c['name']].fillna("null").astype(str)
+
         df.to_parquet(filename)
+        print("parquet file profiled and saved")
         
 
         return True
