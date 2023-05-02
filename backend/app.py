@@ -55,20 +55,24 @@ def query():
 
     if not os.path.isfile(filename):
         if not download_and_save(id):
-            return {"data":"[]","error":True,"message":"Dataset is not downloadable"}
+            return {"data":"[]","error":True,"message":"Dataset is not downloadable","dtypes":"[]"}
 
     con=duckdb.connect("flask.db")
     query_result=[]
     if not query:
-        query_result=con.sql(" from "+filename).fetchdf().to_json(orient='records')
+        query_result=con.sql(" from "+filename)
+
     else:
         try:
             query=query.replace("TABLE",filename)
-            query_result=con.sql(query).fetchdf().to_json(orient='records')
+            query_result=con.sql(query)
         except:
-            return {"data":"[]","error":True,"message":"Error in query"}
-
-    return {"data":query_result,"error":False,"message":"success"}
+            return {"data":"[]","error":True,"message":"Error in query","dtypes":"[]"}
+        
+    dtypes=query_result.dtypes
+    print(dtypes)
+    query_result=query_result.fetchdf().to_json(orient='records')
+    return {"data":query_result,"error":False,"message":"success","dtypes":dtypes}
 
 
 
