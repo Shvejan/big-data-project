@@ -19,13 +19,21 @@ def download_and_save(id):
 
         profiles=datamart_profiler.process_dataset(df)
         for c in profiles['columns']:
-            # print(c['name'],c['structural_type'])
-            if "Integer" in c['structural_type']:
-                df[c['name']]=df[c['name']].fillna(0).astype(float).astype(int)
-            elif "Float" in c['structural_type']:
-                df[c['name']]=df[c['name']].fillna(0).astype(float)
-            elif "Text" in c['structural_type']:
-                df[c['name']]=df[c['name']].fillna("null").astype(str)
+            dtypes=[]
+            dtypes.append(c['structural_type'].split('/')[-1])
+            for s in c['semantic_types']:
+                dtypes.append(s.split('/')[-1])
+            try:
+                if "DateTime" in dtypes:
+                    df[c['name']] = pd.to_datetime(df[c['name']], format='%Y-%m-%d')
+                elif "Integer" in dtypes:
+                    df[c['name']]=df[c['name']].fillna(0).astype(float).astype(int)
+                elif "Float" in dtypes:
+                    df[c['name']]=df[c['name']].fillna(0).astype(float)
+                elif "Text" in dtypes:
+                    df[c['name']]=df[c['name']].fillna("null").astype(str)
+            except:
+                pass
 
         df.to_parquet(filename)
         print("parquet file profiled and saved")
