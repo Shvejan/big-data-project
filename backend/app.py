@@ -1,4 +1,4 @@
-from flask import Flask ,request
+from flask import Flask, request
 from flask_cors import CORS, cross_origin
 import requests
 import pandas as pd
@@ -9,40 +9,37 @@ from minio import Minio
 from io import BytesIO
 
 app = Flask(__name__)
+client = Minio(
+    "localhost:8050", access_key="devkey", secret_key="devpassword", secure=False
+)
 
 
 def download_and_save(id):
-    client = Minio(
-        "localhost:8050",
-        access_key="devkey",
-        secret_key="devpassword",
-        secure=False
-    )
-    filename=id.replace(".","_").replace("-","_")+".parquet"
-    response=requests.get('https://auctus.vida-nyu.org/api/v1/download/'+id)
-    if response.status_code==200:
+    filename = id.replace(".", "_").replace("-", "_") + ".parquet"
+    response = requests.get("https://auctus.vida-nyu.org/api/v1/download/" + id)
+    if response.status_code == 200:
         try:
-            data=response.content.decode()
-            list=[x.split(',') for x in data.split('\n')]
-            df=pd.DataFrame(list[1:],columns=list[0])
+            data = response.content.decode()
+            list = [x.split(",") for x in data.split("\n")]
+            df = pd.DataFrame(list[1:], columns=list[0])
         except:
             return False
 
-        profiles=datamart_profiler.process_dataset(df)
-        for c in profiles['columns']:
-            dtypes=[]
-            dtypes.append(c['structural_type'].split('/')[-1])
-            for s in c['semantic_types']:
-                dtypes.append(s.split('/')[-1])
+        profiles = datamart_profiler.process_dataset(df)
+        for c in profiles["columns"]:
+            dtypes = []
+            dtypes.append(c["structural_type"].split("/")[-1])
+            for s in c["semantic_types"]:
+                dtypes.append(s.split("/")[-1])
             try:
                 if "DateTime" in dtypes:
-                    df[c['name']] = pd.to_datetime(df[c['name']], format='%Y-%m-%d')
+                    df[c["name"]] = pd.to_datetime(df[c["name"]], format="%Y-%m-%d")
                 elif "Integer" in dtypes:
-                    df[c['name']]=df[c['name']].fillna(0).astype(float).astype(int)
+                    df[c["name"]] = df[c["name"]].fillna(0).astype(float).astype(int)
                 elif "Float" in dtypes:
-                    df[c['name']]=df[c['name']].fillna(0).astype(float)
+                    df[c["name"]] = df[c["name"]].fillna(0).astype(float)
                 elif "Text" in dtypes:
-                    df[c['name']]=df[c['name']].fillna("null").astype(str)
+                    df[c["name"]] = df[c["name"]].fillna("null").astype(str)
             except:
                 pass
 
@@ -56,46 +53,39 @@ def download_and_save(id):
             object_name=filename,
             data=parquet_buffer,
             length=parquet_buffer.getbuffer().nbytes,
-            content_type="application/octet-stream"
+            content_type="application/octet-stream",
         )
         print("parquet file profiled and saved")
-        
 
         return True
     return False
-    
 
 
-@app.route('/query')
+@app.route("/query")
 @cross_origin()
 def query():
+    id = request.args.get("id")
+    query = request.args.get("query")
 
-    id = request.args.get('id')
-    query=request.args.get('query')
-
-    filename=id.replace(".","_").replace("-","_")+".parquet"
-
-    client = Minio(
-        "localhost:8050",
-        access_key="devkey",
-        secret_key="devpassword",
-        secure=False
-    )
+    filename = id.replace(".", "_").replace("-", "_") + ".parquet"
 
     if not client.bucket_exists("auctus-bucket"):
         client.make_bucket("auctus-bucket")
 
-    # bucket creation done 
+    # bucket creation done
     try:
         response = client.get_object("auctus-bucket", filename)
         print("dtasaet found")
     except:
         if not download_and_save(id):
-            return {"data":"[]","error":True,"message":"Dataset is not downloadable","dtypes":"[]"}
-    
+            return {
+                "data": "[]",
+                "error": True,
+                "message": "Dataset is not downloadable",
+                "dtypes": "[]",
+            }
 
-
-    con=duckdb.connect("flask.db")
+    con = duckdb.connect("flask.db")
     con.sql("install 'httpfs';")
     con.sql("load 'httpfs';")
     con.sql("SET s3_url_style='path';")
@@ -103,24 +93,37 @@ def query():
     con.sql("SET s3_use_ssl=false;")
     con.sql("SET s3_access_key_id='devkey';")
     con.sql("SET s3_secret_access_key='devpassword';")
-    query_result=[]
+    query_result = []
 
     if not query:
-        query_result=con.sql(" select * from read_parquet('s3://auctus-bucket/{}');".format(filename))
+        query_result = con.sql(
+            " select * from read_parquet('s3://auctus-bucket/{}');".format(filename)
+        )
 
     else:
         try:
-            query=query.replace("TABLE","read_parquet('s3://auctus-bucket/{}')".format(filename))
-            query_result=con.sql(query)
+            query = query.replace(
+                "TABLE", "read_parquet('s3://auctus-bucket/{}')".format(filename)
+            )
+            query_result = con.sql(query)
         except:
-            return {"data":"[]","error":True,"message":"Error in query","dtypes":"[]"}
-        
-    dtypes=query_result.dtypes
-    query_result=query_result.fetchdf().to_json(orient='records')
-    return {"data":query_result,"error":False,"message":"success","dtypes":dtypes}
+            return {
+                "data": "[]",
+                "error": True,
+                "message": "Error in query",
+                "dtypes": "[]",
+            }
+
+    dtypes = query_result.dtypes
+    query_result = query_result.fetchdf().to_json(orient="records")
+    return {
+        "data": query_result,
+        "error": False,
+        "message": "success",
+        "dtypes": dtypes,
+    }
     # return {"data":"[]","error":True,"message":"Error in query","dtypes":"[]"}
 
 
-
-if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=8000 ,debug=True)
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=8000, debug=True)
