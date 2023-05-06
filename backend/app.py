@@ -106,11 +106,11 @@ def query():
                 "TABLE", "read_parquet('s3://auctus-bucket/{}')".format(filename)
             )
             query_result = con.sql(query)
-        except:
+        except Exception as e:
             return {
                 "data": "[]",
                 "error": True,
-                "message": "Error in query",
+                "message": f"Error in query: {e}",
                 "dtypes": "[]",
             }
 
