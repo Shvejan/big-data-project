@@ -19,9 +19,7 @@ def download_and_save(id):
     response = requests.get("https://auctus.vida-nyu.org/api/v1/download/" + id)
     if response.status_code == 200:
         try:
-            data = response.content.decode()
-            list = [x.split(",") for x in data.split("\n")]
-            df = pd.DataFrame(list[1:], columns=list[0])
+            df = pd.read_csv(BytesIO(response.content))
         except:
             return False
 
