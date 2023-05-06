@@ -105,6 +105,7 @@ def query():
             )
             query_result = con.sql(query)
         except Exception as e:
+            con.close()
             return {
                 "data": "[]",
                 "error": True,
@@ -114,6 +115,7 @@ def query():
 
     dtypes = query_result.dtypes
     query_result = query_result.fetchdf().to_json(orient="records")
+    con.close()
     return {
         "data": query_result,
         "error": False,
