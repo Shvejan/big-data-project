@@ -59,6 +59,69 @@ def download_and_save(id):
     return False
 
 
+def alter_table(filename, query, con):
+    try:
+        con.sql("drop table DATASET")
+    except:
+        print("table does not exist")
+
+    con.sql(
+        " create table DATASET as select * from read_parquet('s3://auctus-bucket/{}');".format(
+            filename
+        )
+    )
+    con.sql(query)
+    con.sql(
+        "COPY DATASET TO 's3://auctus-bucket/{}' (FORMAT 'parquet');".format(filename)
+    )
+    query_result = con.sql(
+        " select * from read_parquet('s3://auctus-bucket/{}');".format(filename)
+    )
+    print(
+        "COPY DATASET TO 's3://auctus-bucket/{}' (FORMAT 'parquet');".format(filename)
+    )
+    print("table successfuly altered")
+    return query_result
+
+
+def connect_duckdb():
+    con = duckdb.connect("flask.db")
+    con.sql("install 'httpfs';")
+    con.sql("load 'httpfs';")
+    con.sql("SET s3_url_style='path';")
+    con.sql(" SET s3_endpoint='localhost:8050'")
+    con.sql("SET s3_use_ssl=false;")
+    con.sql("SET s3_access_key_id='devkey';")
+    con.sql("SET s3_secret_access_key='devpassword';")
+    return con
+
+
+@app.route("/reset")
+@cross_origin()
+def reset():
+    id = request.args.get("id")
+    filename = id.replace(".", "_").replace("-", "_") + ".parquet"
+    con = connect_duckdb()
+
+    try:
+        client.remove_object(bucket_name="auctus-bucket", object_name=filename)
+    except:
+        print("file not found")
+    download_and_save(id)
+    query_result = con.sql(
+        " select * from read_parquet('s3://auctus-bucket/{}');".format(filename)
+    )
+    dtypes = query_result.dtypes
+    query_result = query_result.fetchdf().to_json(orient="records", date_format="iso")
+    con.close()
+    return {
+        "data": query_result,
+        "error": False,
+        "message": "success",
+        "dtypes": dtypes,
+    }
+
+
 @app.route("/query")
 @cross_origin()
 def query():
@@ -83,38 +146,34 @@ def query():
                 "dtypes": "[]",
             }
 
-    con = duckdb.connect("flask.db")
-    con.sql("install 'httpfs';")
-    con.sql("load 'httpfs';")
-    con.sql("SET s3_url_style='path';")
-    con.sql(" SET s3_endpoint='localhost:8050'")
-    con.sql("SET s3_use_ssl=false;")
-    con.sql("SET s3_access_key_id='devkey';")
-    con.sql("SET s3_secret_access_key='devpassword';")
+    con = connect_duckdb()
     query_result = []
 
-    if not query:
-        query_result = con.sql(
-            " select * from read_parquet('s3://auctus-bucket/{}');".format(filename)
-        )
+    try:
+        if not query:
+            query_result = con.sql(
+                " select * from read_parquet('s3://auctus-bucket/{}');".format(filename)
+            )
+        elif "alter table" in query.lower():
+            query_result = alter_table(filename, query, con)
 
-    else:
-        try:
+        else:
             query = query.replace(
-                "TABLE", "read_parquet('s3://auctus-bucket/{}')".format(filename)
+                "DATASET", "read_parquet('s3://auctus-bucket/{}')".format(filename)
             )
             query_result = con.sql(query)
-        except Exception as e:
-            con.close()
-            return {
-                "data": "[]",
-                "error": True,
-                "message": f"Error in query: {e}",
-                "dtypes": "[]",
-            }
+
+    except Exception as e:
+        con.close()
+        return {
+            "data": "[]",
+            "error": True,
+            "message": f"Error in query: {e}",
+            "dtypes": "[]",
+        }
 
     dtypes = query_result.dtypes
-    query_result = query_result.fetchdf().to_json(orient="records")
+    query_result = query_result.fetchdf().to_json(orient="records", date_format="iso")
     con.close()
     return {
         "data": query_result,
