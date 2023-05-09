@@ -13,9 +13,9 @@ git clone https://gitlab.com/ViDA-NYU/auctus/auctus.git
 Follow the setup instrutions in the repository to setup the environment and data volumes in your local system
 
 ## Note:
-Markup : * We will use MinIO docker container from this repository. 
+ * We will use MinIO docker container from this repository. 
 
-          * if follwed correctly docker should be up and start running in the backend.
+ * if follwed correctly docker should be up and start running in the backend.
           
 
 step2:
@@ -68,4 +68,5 @@ npm start
 
 You should now see the Front end running at https://localhost:3000 and backend at https://localhost:8000
 Now continue to the Front end URL run your queries.
+
 
