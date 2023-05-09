@@ -154,7 +154,7 @@ def query():
             query_result = con.sql(
                 " select * from read_parquet('s3://auctus-bucket/{}');".format(filename)
             )
-        elif "alter table" in query.lower():
+        elif "alter table" in query.lower() or "update" in query.lower():
             query_result = alter_table(filename, query, con)
 
         else:
