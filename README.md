@@ -6,7 +6,7 @@ The project involves modifying Auctus’ codebase to convert datasets to Parquet
 
 To execute script please follow instructions:
 
-step1:
+## step1:
 ```
 git clone https://gitlab.com/ViDA-NYU/auctus/auctus.git
 ```
@@ -18,12 +18,12 @@ Follow the setup instrutions in the repository to setup the environment and data
  * if follwed correctly docker should be up and start running in the backend.
           
 
-step2:
+## step2:
 clone the repository in to your local system
 ```
 https://github.com/Shvejan/big-data-project.git
 ```
-step3:
+## step3:
 create a virtual environment with python3.9
 
 ```
@@ -41,7 +41,7 @@ Install the requirements using the following instructions.
 pip install -r requirements.txt
 ```
 
-step3:
+## step3:
 Install the node 16 (https://nodejs.org/en/download)
  After installation move to frontend folder
 ```
@@ -52,14 +52,14 @@ Execute the following node command:
 ```
 npm i
 ```
-step4:
+## step4:
 Change directory to backend
 and run the app.py file:
 ```
 python app.py
 ```
 
-step5:
+## step5:
 Change directory to frontend and execute the following instruction:
 
 ```
