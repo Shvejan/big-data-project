@@ -60,7 +60,7 @@ python app.py
 ```
 
 ## step5:
-Change directory to frontend and execute the following instruction:
+Change directory to frontend and in a different command prompt window execute the following instruction:
 
 ```
 npm start
