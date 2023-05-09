@@ -85,7 +85,7 @@ npm start
 If you successfully complete the steps above, you should have the following localhost endpoints up and running.
 
 Frontend URL Endpoint: https://localhost:3000 \
-Backend URL Endpoing: https://localhost:8000 \
-Minio URL Endpoing : http://localhost:8050
+Backend URL Endpoint: https://localhost:8000 \
+Minio URL Endpoint : http://localhost:8050
 
 Now continue to the Front end URL run your queries.
